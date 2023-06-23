@@ -7,7 +7,6 @@ import { AuthService } from '../services/auth.service';
 import BadRequest from '../errors/bad-request';
 import main, { suPermission } from '../initializer';
 import LoginValidationMiddleware from '../middlewares/loginValidation.middleware';
-import MailService from '../services/email.service';
 
 @Controller('/auth')
 // @UseBefore(passport.authenticate('jwt', { session: false }))
@@ -15,7 +14,6 @@ export class AuthController {
   constructor(
         private readonly userService: UserService = Container.get(UserService),
         private readonly authService: AuthService = Container.get(AuthService),
-        private readonly emailService: MailService = Container.get(MailService)
   ) { }
 
     @Post('/login')

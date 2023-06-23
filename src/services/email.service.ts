@@ -36,13 +36,7 @@ export default class MailService {
 
   async sendMail(options: nodemailer.SendMailOptions) {
     return this.transporter.sendMail(options)
-      .then(info => {
-        console.log(info);
-        return info;
-      })
-      .catch(error => {
-        console.log(error);
-        return error;
-      });
+      .then(info => info)
+      .catch(error => error);
   }
 }

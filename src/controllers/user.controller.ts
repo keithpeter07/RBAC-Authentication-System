@@ -71,6 +71,8 @@ export class UserController {
         return this.prismaErrorHandler.handle(error);
       }
 
+      // Send an email with first time login link to the user - The link contains the jwt
+
       req.auditTrail = `created user: ${createdUser.name}, email: ${createdUser.email}`;
       return {
         createdUser,
