@@ -1,0 +1,255 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model AuthAuditTrail {
+  id                Int      @id @default(autoincrement())
+  superOrgId        Int?
+  action            Boolean   
+  actionDescription String
+  url               String
+  ipAddress         String?
+  userAgent         String?
+  userId            String
+  orgId             Int?
+  details           String?
+  createdAt         DateTime @default(now())
+
+  user AuthUser      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  org  Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model AuthJwtToken {
+  id        Int      @id @default(autoincrement())
+  userId    String   @unique
+  token     String?  @db.LongText()
+  isActive  Boolean  @default(true) 
+  createdAt DateTime @default(now())
+
+  user AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model AuthLog {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  date        Int?
+  cookieBased Boolean?
+  duration    Int?
+  error       String?
+  ip          String?
+  host        String?
+  url         String?
+  userAgent   String?
+
+  user AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model AuthPasswordResetCode {
+  id         Int       @id @default(autoincrement())
+  userId     String    @unique
+  resetCode  Int
+  isActive   Boolean   @default(true) 
+  createdAt  DateTime? @default(now())
+  expiryDate DateTime?
+
+  user AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model AuthPasswordResetHistory {
+  id                 Int      @id @default(autoincrement())
+  userId             String   @unique
+  oldPasswordHash    String
+  newPasswordHash    String
+  ipAddress          String?
+  passwordResetToken String?
+  createdAt          DateTime @default(now())
+  createdAy          Int?
+
+  user AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model AuthPermission {
+  id         Int     @id @default(autoincrement())
+  roleId     Int
+  resourceId String
+  canView    Boolean @default(true) 
+  canCreate  Boolean @default(false) 
+  canUpdate  Boolean @default(false) 
+  canDelete  Boolean @default(false) 
+  canExecute Boolean @default(false) 
+
+  role      AuthRole     @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  resource AuthResource @relation(fields: [resourceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model AuthResource {
+  id         String  @id @default(cuid())
+  name       String  @unique
+  key        String  @unique
+  viewable   Boolean @default(true) 
+  creatable  Boolean @default(true) 
+  updatable  Boolean @default(true) 
+  deletable  Boolean @default(true) 
+  executable Boolean @default(false) 
+
+  AuthPermission AuthPermission[]
+}
+
+model AuthRole {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  readonly    Boolean   @default(false) 
+  levelId     Int?
+  superOrgId  Int?
+  orgId       Int?
+  isActive    Boolean   @default(true) 
+  createdAt   DateTime  @default(now())
+  createdBy   Int?
+
+  AuthPermission AuthPermission[]
+  org            Organization?    @relation(fields: [orgId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  level          AuthUserLevel?   @relation(fields: [levelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  AuthUser       AuthUser[]
+  users          UserRoles[] //
+}
+
+model AuthSecurityQuestion {
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now())
+  createdBy Int?
+  updatedAt DateTime?
+  updatedBy Int?
+}
+
+model AuthUser {
+  id                     String    @id @default(cuid())
+  name                   String
+  username               String?   
+  phone                  String?
+  email                  String    @unique
+  status                 Int       @default(1)
+  timezone               String?
+  activationDate         DateTime?
+  activatedBy            Int?
+  deactivationDate       DateTime?
+  deactivatedBy          Int?
+  remarks                String?
+  passwordHash           Password?
+  passwordResetToken     String?
+  authKey                String?
+  deviceId               String?
+  imsi                   String?
+  accountActivationToken String?
+  levelId                Int?
+  superOrgId             Int?
+  orgId                  Int?
+  isMainAccount          Boolean   @default(true) 
+  isLocked               Boolean   @default(false) 
+  roleId                 Int?      
+  profileImage           String?
+  requirePasswordChange  Boolean   @default(true) 
+  autoGeneratePassword   Boolean   @default(false) 
+  passwordIsDefault      Boolean   @default(false) 
+  hasSetPin              Boolean   @default(false) 
+  createdAt              DateTime  @default(now())
+  createdBy              String?
+  updatedAt              DateTime  @default(now()) @updatedAt
+  updatedBy              String?
+  isDeleted              Boolean   @default(false) 
+  deletedAt              DateTime?
+  deletedBy              Int?
+  lastLogin              DateTime?
+  remainingAttempts      Int       @default(3)
+
+  auditTrail        AuthAuditTrail[]
+  jwtToken          AuthJwtToken?
+  authLog           AuthLog[]
+  passwordResetCode AuthPasswordResetCode?
+  passwordResetHist AuthPasswordResetHistory[]
+
+  role         AuthRole?              @relation(fields: [roleId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  level        AuthUserLevel?         @relation(fields: [levelId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  roles        UserRoles[]
+  logInHistory AuthUserLoginHistory[]
+
+  org Organization? @relation(fields: [orgId], references: [id])
+  // orgRole Organization? @relation("role in organization",fields: [roleId], references: [id])
+
+  @@unique([username, email])
+}
+
+model AuthUserLevel {
+  id             Int     @id @default(autoincrement())
+  name           String
+  forbiddenItems String?
+  parentId       Int?
+  isActive       Boolean @default(true) 
+
+  role     AuthRole[]
+  AuthUser AuthUser[]
+}
+
+model AuthUserLoginHistory {
+  id                Int       @id @default(autoincrement())
+  superOrgId        Int?
+  action            Boolean?
+  actionDescription String?
+  host              String?
+  ip                String?
+  channel           String?
+  userAgent         Int?
+  userId            String?
+  orgId             Int?
+  createdAt         DateTime  @default(now())
+  createdBy         Int?
+  isDeleted         Boolean   @default(false) 
+  deletedAt         DateTime?
+  deletedBy         Int?
+
+  user AuthUser?     @relation(fields: [userId], references: [id])
+  org  Organization? @relation(fields: [orgId], references: [id])
+}
+
+///these are the extra tables that i have added 
+model Organization {
+  id        Int       @id @default(autoincrement())
+  name      String
+  isActive  Boolean   @default(true) 
+  createdAt DateTime? @default(now())
+  createdBy Int?
+  updatedAt DateTime? @updatedAt
+  updatedBy Int?
+
+  authAuditTrail AuthAuditTrail[]
+  users          AuthUser[]
+  AuthRole       AuthRole[]
+  logInHistory   AuthUserLoginHistory[]
+}
+
+model UserRoles {
+  id Int @id @default(autoincrement())
+
+  roleId Int
+  role   AuthRole @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  userId String
+  user   AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model Password {
+  hash String
+
+  user   AuthUser   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String @unique
+}
+
